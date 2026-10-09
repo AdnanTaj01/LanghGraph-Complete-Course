@@ -2,3 +2,6 @@
 .env
 __pycache__/
 graph.md
+checkpoints.db
+checkpoints_test.db
+.agent_checkpoints.db   
