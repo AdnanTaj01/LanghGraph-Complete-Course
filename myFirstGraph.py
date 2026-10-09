@@ -37,8 +37,6 @@ result = graph.invoke({
 
 print(result)
 
-print(graph.get_graph().draw_mermaid())
-
 mermaid = graph.get_graph().draw_mermaid()
 
 with open("graph.md", "w", encoding="utf-8") as file:
