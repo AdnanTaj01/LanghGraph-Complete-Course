@@ -155,171 +155,256 @@
 
 
 
-import os
-from typing import TypedDict, Literal
+# import os
+# from typing import TypedDict, Literal
 
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-from langgraph.graph import StateGraph, START, END
+# from dotenv import load_dotenv
+# from langchain_groq import ChatGroq
+# from langgraph.graph import StateGraph, START, END
 
-load_dotenv()
+# load_dotenv()
 
-if not os.getenv("GROQ_API_KEY"):
-    raise ValueError("GROQ_API_KEY .env file mein nahi mili.")
+# if not os.getenv("GROQ_API_KEY"):
+#     raise ValueError("GROQ_API_KEY .env file mein nahi mili.")
 
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0
-)
-
-
-# Shared memory: tamam agents isi state ko use karenge.
-class State(TypedDict):
-    task: str
-    research: str
-    draft: str
-    review: str
-    next: str
-    steps: int
+# llm = ChatGroq(
+#     model="openai/gpt-oss-120b",
+#     temperature=0
+# )
 
 
-# Manager: decide karega agla agent kaun hoga.
-def supervisor(state: State) -> dict:
-    if state["steps"] >= 6:
-        choice = "done"
-
-    elif not state["research"]:
-        choice = "researcher"
-
-    elif not state["draft"]:
-        choice = "writer"
-
-    elif not state["review"]:
-        choice = "reviewer"
-
-    else:
-        choice = "done"
-
-    print(f"\nSupervisor selected: {choice}")
-
-    return {
-        "next": choice,
-        "steps": state["steps"] + 1
-    }
+# # Shared memory: tamam agents isi state ko use karenge.
+# class State(TypedDict):
+#     task: str
+#     research: str
+#     draft: str
+#     review: str
+#     next: str
+#     steps: int
 
 
-# Agent 1: information prepare karega.
-def researcher(state: State) -> dict:
-    print("Researcher is working...")
+# # Manager: decide karega agla agent kaun hoga.
+# def supervisor(state: State) -> dict:
+#     if state["steps"] >= 6:
+#         choice = "done"
 
-    prompt = f"""
-    Prepare 4 useful facts for this task:
-    {state['task']}
+#     elif not state["research"]:
+#         choice = "researcher"
 
-    Keep the information short and beginner-friendly.
-    Do not invent statistics or fake sources.
-    """
+#     elif not state["draft"]:
+#         choice = "writer"
 
-    response = llm.invoke(prompt)
+#     elif not state["review"]:
+#         choice = "reviewer"
 
-    return {"research": response.content}
+#     else:
+#         choice = "done"
 
+#     print(f"\nSupervisor selected: {choice}")
 
-# Agent 2: information se draft banayega.
-def writer(state: State) -> dict:
-    print("Writer is working...")
-
-    prompt = f"""
-    User task: {state['task']}
-
-    Information:
-    {state['research']}
-
-    Write a clear, short answer using this information.
-    """
-
-    response = llm.invoke(prompt)
-
-    return {"draft": response.content}
+#     return {
+#         "next": choice,
+#         "steps": state["steps"] + 1
+#     }
 
 
-# Agent 3: draft ko review karega.
-def reviewer(state: State) -> dict:
-    print("Reviewer is checking the draft...")
+# # Agent 1: information prepare karega.
+# def researcher(state: State) -> dict:
+#     print("Researcher is working...")
 
-    prompt = f"""
-    Review this draft for clarity, relevance, and unsupported claims.
+#     prompt = f"""
+#     Prepare 4 useful facts for this task:
+#     {state['task']}
 
-    Original task:
-    {state['task']}
+#     Keep the information short and beginner-friendly.
+#     Do not invent statistics or fake sources.
+#     """
 
-    Draft:
-    {state['draft']}
+#     response = llm.invoke(prompt)
 
-    Give brief feedback. If it is acceptable, say APPROVED.
-    Do not claim you verified facts against external sources.
-    """
-
-    response = llm.invoke(prompt)
-
-    return {"review": response.content}
+#     return {"research": response.content}
 
 
-# Supervisor ke decision ke mutabiq next node select hoga.
-def route_next(
-    state: State
-) -> Literal["researcher", "writer", "reviewer", "done"]:
-    return state["next"]
+# # Agent 2: information se draft banayega.
+# def writer(state: State) -> dict:
+#     print("Writer is working...")
+
+#     prompt = f"""
+#     User task: {state['task']}
+
+#     Information:
+#     {state['research']}
+
+#     Write a clear, short answer using this information.
+#     """
+
+#     response = llm.invoke(prompt)
+
+#     return {"draft": response.content}
 
 
-# Graph create karna.
-builder = StateGraph(State)
+# # Agent 3: draft ko review karega.
+# def reviewer(state: State) -> dict:
+#     print("Reviewer is checking the draft...")
 
-builder.add_node("supervisor", supervisor)
-builder.add_node("researcher", researcher)
-builder.add_node("writer", writer)
-builder.add_node("reviewer", reviewer)
+#     prompt = f"""
+#     Review this draft for clarity, relevance, and unsupported claims.
 
-builder.add_edge(START, "supervisor")
+#     Original task:
+#     {state['task']}
 
-builder.add_conditional_edges(
-    "supervisor",
-    route_next,
-    {
-        "researcher": "researcher",
-        "writer": "writer",
-        "reviewer": "reviewer",
-        "done": END
-    }
-)
+#     Draft:
+#     {state['draft']}
 
-# Har worker ka kaam khatam hone par manager ke paas wapas jao.
-builder.add_edge("researcher", "supervisor")
-builder.add_edge("writer", "supervisor")
-builder.add_edge("reviewer", "supervisor")
+#     Give brief feedback. If it is acceptable, say APPROVED.
+#     Do not claim you verified facts against external sources.
+#     """
 
-graph = builder.compile()
+#     response = llm.invoke(prompt)
+
+#     return {"review": response.content}
 
 
-if __name__ == "__main__":
-    result = graph.invoke({
-        "task": "Explain Artificial Intelligence to a beginner.",
-        "research": "",
-        "draft": "",
-        "review": "",
-        "next": "",
-        "steps": 0
-    })
+# # Supervisor ke decision ke mutabiq next node select hoga.
+# def route_next(
+#     state: State
+# ) -> Literal["researcher", "writer", "reviewer", "done"]:
+#     return state["next"]
 
-    print("\n========== FINAL DRAFT ==========")
-    print(result["draft"])
 
-    print("\n========== REVIEW ==========")
-    print(result["review"])
+# # Graph create karna.
+# builder = StateGraph(State)
 
-    print("\nTotal supervisor decisions:", result["steps"])
+# builder.add_node("supervisor", supervisor)
+# builder.add_node("researcher", researcher)
+# builder.add_node("writer", writer)
+# builder.add_node("reviewer", reviewer)
+
+# builder.add_edge(START, "supervisor")
+
+# builder.add_conditional_edges(
+#     "supervisor",
+#     route_next,
+#     {
+#         "researcher": "researcher",
+#         "writer": "writer",
+#         "reviewer": "reviewer",
+#         "done": END
+#     }
+# )
+
+# # Har worker ka kaam khatam hone par manager ke paas wapas jao.
+# builder.add_edge("researcher", "supervisor")
+# builder.add_edge("writer", "supervisor")
+# builder.add_edge("reviewer", "supervisor")
+
+# graph = builder.compile()
+
+
+# if __name__ == "__main__":
+#     result = graph.invoke({
+#         "task": "Explain Artificial Intelligence to a beginner.",
+#         "research": "",
+#         "draft": "",
+#         "review": "",
+#         "next": "",
+#         "steps": 0
+#     })
+
+#     print("\n========== FINAL DRAFT ==========")
+#     print(result["draft"])
+
+#     print("\n========== REVIEW ==========")
+#     print(result["review"])
+
+#     print("\nTotal supervisor decisions:", result["steps"])
 
 
 
 ########################################## sub-graphs ######################################################################
 
+from typing import TypedDict
+from langgraph.graph import StateGraph, START, END
+
+
+# Child graph ki state
+class ResearchState(TypedDict):
+    topic: str
+    analysis: str
+    summary: str
+
+
+# Child graph node 1
+def analyze(state: ResearchState) -> dict:
+    print("Child graph: analyzing topic...")
+
+    return {
+        "analysis": (
+            f"{state['topic']} ko samajhne ke liye "
+            "uske meaning aur uses identify karo."
+        )
+    }
+
+
+# Child graph node 2
+def summarize(state: ResearchState) -> dict:
+    print("Child graph: creating summary...")
+
+    return {
+        "summary": f"Summary: {state['analysis']}"
+    }
+
+
+# Child graph build karo
+child_builder = StateGraph(ResearchState)
+
+child_builder.add_node("analyze", analyze)
+child_builder.add_node("summarize", summarize)
+
+child_builder.add_edge(START, "analyze")
+child_builder.add_edge("analyze", "summarize")
+child_builder.add_edge("summarize", END)
+
+research_graph = child_builder.compile()
+
+
+# Parent graph ki state
+class ParentState(TypedDict):
+    topic: str
+    result: str
+
+
+# Parent node child graph ko call karega
+def run_research(state: ParentState) -> dict:
+    print("Parent graph: calling research subgraph...")
+
+    child_result = research_graph.invoke({
+        "topic": state["topic"],
+        "analysis": "",
+        "summary": ""
+    })
+
+    return {"result": child_result["summary"]}
+
+
+# Parent graph build karo
+parent_builder = StateGraph(ParentState)
+
+parent_builder.add_node("research", run_research)
+
+parent_builder.add_edge(START, "research")
+parent_builder.add_edge("research", END)
+
+parent_graph = parent_builder.compile()
+
+
+if __name__ == "__main__":
+    result = parent_graph.invoke({
+        "topic": "Artificial Intelligence",
+        "result": ""
+    })
+
+    print("\nFinal result:")
+    print(result["result"])
+
+    
